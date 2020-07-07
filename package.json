@@ -2,28 +2,26 @@
   "author": "Rob Evans - Irrelon Software Limited",
   "name": "irrelon-fsm",
   "description": "A simple finite state machine implementation.",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "keywords": [
     "fsm",
     "finite",
     "state",
     "machine"
   ],
-  "dependencies": {
-
-  },
+  "dependencies": {},
   "engines": {
-    "node": "*"
+    "node": "^5.x"
   },
-  "scripts": {
-
-  },
+  "scripts": {},
   "repository": {
     "type": "git",
     "url": "git://github.com/irrelon/irrelon-fsm.git"
   },
   "devDependencies": {
-
+    "babel-eslint": "^10.1.0",
+    "eslint": "^7.4.0",
+    "eslint-config-irrelon": "^1.0.10"
   },
   "main": "./index",
   "browserify": "./index",
