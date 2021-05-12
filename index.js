@@ -10,6 +10,7 @@ class FSM {
 		this._initialStateName = "";
 		this._currentStateName = "";
 		this._previousStateName = "";
+		this._transitionQueue = [];
 
 		this._debug = false;
 	}
@@ -213,14 +214,18 @@ class FSM {
 	 * @returns {Promise} The result of entering the state.
 	 */
 	enterState = (newStateName, data) => {
-		return new Promise((resolve) => {
+		this.log(`Asked to enter state: ${newStateName}`);
+		this._transitionQueue.push((resolve) => {
 			// Check if we need to transitions
 			if (newStateName === this._currentStateName) {
 				this.log(`Already in "${newStateName}" state.`, "warning");
-				return;
+				return resolve();
 			}
 
+			this.log(`Checking transition from ${this._currentStateName} to ${newStateName}...`);
+
 			if (!this._transitions[this._currentStateName] || !this._transitions[this._currentStateName][newStateName]) {
+				this.log(`No transition check from ${this._currentStateName} to ${newStateName}`);
 				// No transition check method exists, continue to change states
 				return resolve(this._transitionStates(this._currentStateName, newStateName, data));
 			}
@@ -237,6 +242,57 @@ class FSM {
 				return resolve(this._transitionStates(this._currentStateName, newStateName, data));
 			});
 		});
+
+		return this._processTransition();
+	};
+
+	/**
+	 * Takes the oldest item on the transition queue and calls
+	 * the transition function, removing it from the queue in
+	 * the process. Once the transition function has been executed
+	 * the _processTransition() function is called again until
+	 * no further items exist on the transition queue.
+	 *
+	 * This method should not be called from outside the FSM
+	 * module itself. It is an internal private method.
+	 * @returns {Promise<*>} A promise that is resolved when
+	 * the oldest transition queue item (function) has finished executing
+	 * and resolves it's own promise to us. If we are already currently
+	 * executing a transition function (as the functions are async so can
+	 * take as much time as they like) or no further transition functions
+	 * exist on the queue, the promise is resolved immediately.
+	 * @private
+	 */
+	_processTransition = async () => {
+		if (this._transitioning) {
+			this.log(`We are already transitioning, returning`);
+			return Promise.resolve();
+		}
+
+		// Check if there are any further transitions to take
+		if (!this._transitionQueue.length) {
+			this.log(`No further transitions, returning`);
+			this._transitioning = false;
+			return Promise.resolve();
+		}
+
+		// Mark the system as transitioning
+		this._transitioning = true;
+
+		// Pull the latest async function off the queue
+		const func = this._transitionQueue.shift();
+
+		// Call the function and wait for resolve
+		this.log(`Calling transition function...`);
+		return new Promise(func).then(() => {
+			this.log(`Transition function finished`);
+			// Mark the system as no longer transitioning
+			this._transitioning = false;
+
+			// Call process transition again
+			this.log(`Checking for further transitions...`);
+			return this._processTransition();
+		});
 	};
 
 	/**
@@ -248,6 +304,12 @@ class FSM {
 	}
 
 	process = (functionName, data) => {
+		const globalStateObj = this.getState("*");
+
+		if (globalStateObj && globalStateObj[functionName]) {
+			globalStateObj[functionName](data);
+		}
+
 		const currentStateObj = this.getState(this._currentStateName);
 
 		if (!currentStateObj[functionName]) return;
