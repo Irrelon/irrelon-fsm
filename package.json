@@ -1,6 +1,6 @@
 {
 	"name": "@irrelon/fsm",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"author": "Irrelon Software Limited <contact@irrelon.com>",
 	"description": "Irrelon Finite State Machine",
 	"contributors": [

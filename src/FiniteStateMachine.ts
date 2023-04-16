@@ -65,7 +65,7 @@ export class FiniteStateMachine {
 	}
 
 	log (...rest: any[]) {
-		if (!this._log) return;
+		if (!this._debug) return;
 		console.log(...rest);
 	}
 
