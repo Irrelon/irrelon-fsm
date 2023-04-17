@@ -31,7 +31,6 @@ export class FiniteStateMachine {
 	_transitionQueue: TransitionPromise[];
 	_data: { [key: string]: any };
 	_debug: boolean;
-	_log: boolean;
 
 	/**
 	 * A simple finite state machine implementation.
@@ -49,7 +48,6 @@ export class FiniteStateMachine {
 		this._data = {};
 
 		this._debug = false;
-		this._log = false;
 
 		if (initialData) {
 			if (initialData.states) {
