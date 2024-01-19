@@ -1,6 +1,6 @@
 {
 	"name": "@irrelon/fsm",
-	"version": "1.0.1",
+	"version": "2.0.0",
 	"author": "Irrelon Software Limited <contact@irrelon.com>",
 	"description": "Irrelon Finite State Machine",
 	"contributors": [
@@ -9,16 +9,26 @@
 			"email": "rob@irrelon.com"
 		}
 	],
-	"engines": {
-		"node": "^v16.x.x"
-	},
 	"type": "module",
-	"main": "src/FiniteStateMachine.js",
+	"main": "dist/cjs/FiniteStateMachine.js",
+	"module": "dist/esm/FiniteStateMachine.js",
+	"types": "dist/esm/FiniteStateMachine.d.ts",
 	"scripts": {
-		"build": "tsc",
-		"build-watch": "tsc --watch",
-		"fixPaths": "node fixPaths.cjs",
-		"test": "NODE_OPTIONS=--experimental-vm-modules npx jest --testMatch \"**/*.test.js\" --watchAll"
+		"build": "npm run build-esm && npm run build-cjs",
+		"build-esm": "(npm run compile-esm 2>/dev/null || exit 0) && sh ./fixup-esm.sh && npm run fix-paths-esm",
+		"build-cjs": "(npm run compile-cjs 2>/dev/null || exit 0) && sh ./fixup-cjs.sh && npm run fix-paths-cjs",
+		"compile": "npm run compile-esm && npm run compile-cjs",
+		"compile-esm": "tsc -p tsconfig-esm.json",
+		"compile-cjs": "tsc -p tsconfig-cjs.json",
+		"fix-paths": "npm run fix-paths-esm && npm run fix-paths-cjs",
+		"fix-paths-esm": "npx @irrelon/fix-paths -p ./tsconfig-esm.json -i \"**/*.js, **/*.ts\" --write",
+		"fix-paths-cjs": "npx @irrelon/fix-paths -p ./tsconfig-cjs.json -i \"**/*.js, **/*.ts\" --write",
+		"build-esm-watch": "tsc -p tsconfig-esm.json --watch",
+		"build-cjs-watch": "tsc -p tsconfig-cjs.json --watch",
+		"fix-paths-watch": "npx @irrelon/fix-paths --write --watch",
+		"generate-exports": "node update-indexes.cjs",
+		"test": "NODE_OPTIONS=--experimental-vm-modules npx jest -f \".test.js\"",
+		"test-watch": "NODE_OPTIONS=--experimental-vm-modules npx jest -f \".test.js\" --watch --all"
 	},
 	"dependencies": {
 		"@irrelon/emitter": "^5.0.2",

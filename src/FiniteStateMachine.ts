@@ -1,25 +1,10 @@
-export type TransitionResult = Error | any | Promise<any>;
-export type TransitionCheckFunction = (...rest: any[]) => TransitionResult;
-export type TransitionPromise = (result?: any) => Promise<any>;
-
-export interface TransitionDefinition {
-	[fromState: string]: {
-		[toState: string]: TransitionCheckFunction;
-	};
-}
-
-export interface EventDefinition {
-	[eventName: string]: (...rest: any[]) => Promise<any>;
-}
-
-export interface StateDefinition {
-	[stateName: string]: EventDefinition;
-}
-
-export interface InitialData {
-	states: StateDefinition;
-	initialState: string;
-}
+import {TransitionCheckFunction} from "@/types/TransitionCheckFunction";
+import {TransitionPromise} from "@/types/TransitionPromise";
+import {TransitionResult} from "@/types/TransitionResult";
+import {StateDefinition} from "@/types/StateDefinition";
+import {TransitionDefinition} from "@/types/TransitionDefinition";
+import {InitialData} from "@/types/InitialData";
+import {EventDefinition} from "@/types/EventDefinition";
 
 export class FiniteStateMachine {
 	_states: StateDefinition;
