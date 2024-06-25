@@ -149,8 +149,12 @@ class FiniteStateMachine {
             const newStateObj = this.getState(stateName);
             if (!newStateObj)
                 throw new Error(`Cannot set initial state "${stateName}" because it does not exist!`);
+            // Record the initial state
+            this._initialStateName = stateName;
             // Update the current state
             this._currentStateName = stateName;
+            // Clear the previous states
+            this._previousStates = [];
             if (this._debug) {
                 this.log("Entering initial state: " + stateName);
             }
@@ -162,17 +166,17 @@ class FiniteStateMachine {
         });
         /**
          * Gets the state definition object for the specified state name.
-         * @param {String} stateName The name of the state who's definition object should
-         * be looked up and returned.
-         * @returns {Object} The state definition object or undefined if no state exists
-         * with that name.
+         * @param {string} stateName The name of the state to return the definition
+         * object for.
+         * @returns {EventDefinition} The state definition object or undefined if no state
+         * exists with that name.
          */
         this.getState = (stateName) => {
             return this._states[stateName];
         };
         /**
          * Tell the FSM to enter the state specified.
-         * @param {String} newStateName The new state to enter.
+         * @param {string} newStateName The new state to enter.
          * @param {any[]} rest Any data to pass to the exit and enter methods.
          * @returns {Promise<TransitionResult>} The result of entering the state.
          */
@@ -187,7 +191,7 @@ class FiniteStateMachine {
                 if (!this._transitions[this._currentStateName] || !this._transitions[this._currentStateName][newStateName]) {
                     // No transition check method exists, continue to change states
                     this.log(`No check required, transitioning from ${this._currentStateName} to ${newStateName}...`);
-                    return yield this._transitionStates(newStateName, ...rest);
+                    return yield this._transitionStates(newStateName, "forward", ...rest);
                 }
                 this.log(`Checking transition from ${this._currentStateName} to ${newStateName}...`);
                 // There is a transition check method, call it to see if we can change states
@@ -199,7 +203,50 @@ class FiniteStateMachine {
                 }
                 // State change allowed
                 this.log(`Transition allowed from "${this._currentStateName}" to "${newStateName}"`);
-                return yield this._transitionStates(newStateName, ...rest);
+                return yield this._transitionStates(newStateName, "forward", ...rest);
+            }));
+            this.log(`Processing transition queue from enterState(${newStateName})`);
+            return yield this._processTransition();
+        });
+        /**
+         * Tell the FSM to exit the current state and enter the previous state.
+         * @returns {Promise} The exit promise.
+         */
+        this.exitState = (...rest) => __awaiter(this, void 0, void 0, function* () {
+            if (!this._previousStates.length) {
+                throw new Error("No previous state to transition to");
+            }
+            const previousState = this._previousStates.pop();
+            if (!previousState) {
+                throw new Error("No previous state to transition to");
+            }
+            const newStateName = previousState.name;
+            // If provided with override args, use them, otherwise return to the previous
+            // state with the previous states args
+            const dataArgs = (rest && rest.length) ? rest : previousState.args;
+            //return this.enterState(previousState.name, ...dataArgs);
+            this._transitionQueue.push(() => __awaiter(this, void 0, void 0, function* () {
+                // Check if we need to do transitions
+                if (newStateName === this._currentStateName) {
+                    this.log(`Already in "${newStateName}" state.`);
+                    return undefined;
+                }
+                if (!this._transitions[this._currentStateName] || !this._transitions[this._currentStateName][newStateName]) {
+                    // No transition check method exists, continue to change states
+                    this.log(`No check required, transitioning from ${this._currentStateName} to ${newStateName}...`);
+                    return yield this._transitionStates(newStateName, "backward", ...dataArgs);
+                }
+                this.log(`Checking transition from ${this._currentStateName} to ${newStateName}...`);
+                // There is a transition check method, call it to see if we can change states
+                const result = yield this._transitions[this._currentStateName][newStateName](...dataArgs);
+                if (result instanceof Error) {
+                    // State change not allowed or error
+                    this.log(`Cannot transition from "${this._currentStateName}" to "${newStateName}"`);
+                    return result;
+                }
+                // State change allowed
+                this.log(`Transition allowed from "${this._currentStateName}" to "${newStateName}"`);
+                return yield this._transitionStates(newStateName, "backward", ...dataArgs);
             }));
             this.log(`Processing transition queue from enterState(${newStateName})`);
             return yield this._processTransition();
@@ -237,13 +284,6 @@ class FiniteStateMachine {
             return yield this._processTransition();
         });
         /**
-         * Tell the FSM to exit the current state and enter the previous state.
-         * @returns {Promise} The exit promise.
-         */
-        this.exitState = (...rest) => {
-            return this.enterState(this._previousStateName, ...rest);
-        };
-        /**
          * Raise an event in the current state. If a corresponding event
          * function exists in the current state's definition, it is executed
          * with the passed data as the argument. This is useful when you
@@ -273,12 +313,13 @@ class FiniteStateMachine {
         /**
          * Handles changing states from one to another by checking for transitions and
          * handling return values.
-         * @param {String} newStateName The name of the state we are transitioning to.
+         * @param {string} newStateName The name of the state we are transitioning to.
+         * @param {"forward" | "backward"} direction If we are entering or exiting.
          * @param {any[]} rest Optional data to pass to the exit and enter methods of each state.
          * @returns {Promise} The promise of the transition result.
          * @private
          */
-        this._transitionStates = (newStateName, ...rest) => __awaiter(this, void 0, void 0, function* () {
+        this._transitionStates = (newStateName, direction, ...rest) => __awaiter(this, void 0, void 0, function* () {
             const currentStateObj = this.getState(this._currentStateName);
             const newStateObj = this.getState(newStateName);
             if (!currentStateObj) {
@@ -298,8 +339,15 @@ class FiniteStateMachine {
                 this.log("Exiting state: " + this._currentStateName);
             }
             const goToNextState = () => __awaiter(this, void 0, void 0, function* () {
-                this._previousStateName = this._currentStateName;
+                if (direction === "forward") {
+                    this._previousStates.push({ name: this._currentStateName, args: rest });
+                }
                 this._currentStateName = newStateName;
+                // If we are transitioning to the initial state, clear all history
+                if (newStateName === this._initialStateName) {
+                    // Clear previous state history
+                    this._previousStates = [];
+                }
                 if (this._debug) {
                     this.log("Entering state: " + newStateName);
                 }
@@ -332,7 +380,7 @@ class FiniteStateMachine {
         // Track states by name.
         this._initialStateName = "";
         this._currentStateName = "";
-        this._previousStateName = "";
+        this._previousStates = [];
         this._transitionQueue = [];
         this._transitioning = false;
         this._data = {};
@@ -361,11 +409,26 @@ class FiniteStateMachine {
         return this._initialStateName;
     }
     /**
+     * Returns the names of all previous states currently
+     * in the previous state array.
+     * @returns {string[]}
+     */
+    previousStates() {
+        return this._previousStates;
+    }
+    /**
+     * Returns the previous state.
+     * @returns {string[]}
+     */
+    previousState() {
+        return this._previousStates[this._previousStates.length - 1];
+    }
+    /**
      * Returns the name of the previous state.
      * @returns {string} The name of the previous state.
      */
     previousStateName() {
-        return this._previousStateName;
+        return this._previousStates[this._previousStates.length - 1].name;
     }
     /**
      * Returns the name of the current state.

@@ -1,6 +1,6 @@
 {
 	"name": "@irrelon/fsm",
-	"version": "2.0.0",
+	"version": "2.1.0",
 	"author": "Irrelon Software Limited <contact@irrelon.com>",
 	"description": "Irrelon Finite State Machine",
 	"contributors": [
@@ -27,8 +27,8 @@
 		"build-cjs-watch": "tsc -p tsconfig-cjs.json --watch",
 		"fix-paths-watch": "npx @irrelon/fix-paths --write --watch",
 		"generate-exports": "node update-indexes.cjs",
-		"test": "NODE_OPTIONS=--experimental-vm-modules npx jest -f \".test.js\"",
-		"test-watch": "NODE_OPTIONS=--experimental-vm-modules npx jest -f \".test.js\" --watch --all"
+		"test": "NODE_ENV=test jest",
+		"test-watch": "NODE_OPTIONS=--experimental-vm-modules jest --testMatch \"**/*.test.(js|ts)\" --watchAll"
 	},
 	"dependencies": {
 		"@irrelon/emitter": "^5.0.2",
@@ -65,6 +65,7 @@
 		"eslint-plugin-tree-shaking": "^1.10.0",
 		"eslint-plugin-unused-imports": "^2.0.0",
 		"jest": "^29.5.0",
+		"ts-jest": "^29.1.5",
 		"minimatch": "^7.4.2",
 		"prettier": "^2.6.2",
 		"stacktrace-js": "^2.0.2",

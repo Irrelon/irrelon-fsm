@@ -5,13 +5,17 @@ import { StateDefinition } from "./types/StateDefinition.js"
 import { TransitionDefinition } from "./types/TransitionDefinition.js"
 import { InitialData } from "./types/InitialData.js"
 import { EventDefinition } from "./types/EventDefinition.js"
+export interface PreviousState {
+    name: string;
+    args: any[];
+}
 export declare class FiniteStateMachine {
     _states: StateDefinition;
     _transitions: TransitionDefinition;
     _transitioning: boolean;
     _initialStateName: string;
     _currentStateName: string;
-    _previousStateName: string;
+    _previousStates: PreviousState[];
     _transitionQueue: TransitionPromise[];
     _data: {
         [key: string]: any;
@@ -27,6 +31,17 @@ export declare class FiniteStateMachine {
      * @returns {string} The name of the initial state.
      */
     initialStateName(): string;
+    /**
+     * Returns the names of all previous states currently
+     * in the previous state array.
+     * @returns {string[]}
+     */
+    previousStates(): PreviousState[];
+    /**
+     * Returns the previous state.
+     * @returns {string[]}
+     */
+    previousState(): PreviousState;
     /**
      * Returns the name of the previous state.
      * @returns {string} The name of the previous state.
@@ -145,19 +160,24 @@ export declare class FiniteStateMachine {
     initialState: (stateName: string, ...rest: any[]) => Promise<any>;
     /**
      * Gets the state definition object for the specified state name.
-     * @param {String} stateName The name of the state who's definition object should
-     * be looked up and returned.
-     * @returns {Object} The state definition object or undefined if no state exists
-     * with that name.
+     * @param {string} stateName The name of the state to return the definition
+     * object for.
+     * @returns {EventDefinition} The state definition object or undefined if no state
+     * exists with that name.
      */
     getState: (stateName: string) => EventDefinition;
     /**
      * Tell the FSM to enter the state specified.
-     * @param {String} newStateName The new state to enter.
+     * @param {string} newStateName The new state to enter.
      * @param {any[]} rest Any data to pass to the exit and enter methods.
      * @returns {Promise<TransitionResult>} The result of entering the state.
      */
     enterState: (newStateName: string, ...rest: any[]) => Promise<TransitionResult>;
+    /**
+     * Tell the FSM to exit the current state and enter the previous state.
+     * @returns {Promise} The exit promise.
+     */
+    exitState: (...rest: any[]) => Promise<any>;
     /**
      * Processes the transition queue, taking the first on the queue
      * and calling the transition function, then when that function
@@ -166,11 +186,6 @@ export declare class FiniteStateMachine {
      * @private
      */
     _processTransition: () => Promise<any>;
-    /**
-     * Tell the FSM to exit the current state and enter the previous state.
-     * @returns {Promise} The exit promise.
-     */
-    exitState: (...rest: any[]) => Promise<any>;
     getData(key: string): any;
     setData(key: string, val: any): void;
     /**
@@ -186,10 +201,11 @@ export declare class FiniteStateMachine {
     /**
      * Handles changing states from one to another by checking for transitions and
      * handling return values.
-     * @param {String} newStateName The name of the state we are transitioning to.
+     * @param {string} newStateName The name of the state we are transitioning to.
+     * @param {"forward" | "backward"} direction If we are entering or exiting.
      * @param {any[]} rest Optional data to pass to the exit and enter methods of each state.
      * @returns {Promise} The promise of the transition result.
      * @private
      */
-    _transitionStates: (newStateName: string, ...rest: any[]) => Promise<any>;
+    _transitionStates: (newStateName: string, direction: "forward" | "backward", ...rest: any[]) => Promise<any>;
 }
